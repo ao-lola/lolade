@@ -3,8 +3,9 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 
 //set up routes
-const admin = require("./routes/api/admin");
+
 const users = require("./routes/api/users");
+const profiles = require("./routes/api/profiles");
 
 const app = express();
 const db = require("./config/keys").mongoURI;
@@ -16,8 +17,9 @@ app.use(bodyParser.json());
 app.get("/", (req, res) => res.send("Hello World"));
 
 // router use
-app.use("/api/admin", admin);
+
 app.use("/api/users", users);
+app.use("/api/profiles", profiles);
 
 mongoose
   .connect(db)
