@@ -3,7 +3,14 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const keys = require("../../config/keys"); //init keys folder for token
+const passport = require("passport");
 
+//Load input validation
+const validateRegisterInput = require("../../validator/register");
+
+//Load login validation
+const validateLoginInput = require("../../validator/login");
+//Load User Model
 const User = require("./models/Users");
 
 //@Route get api/users/test route
@@ -15,9 +22,17 @@ router.get("/test", (req, res) => res.json({ msg: "Users Works" }));
 //@desc test users registration
 //@access public
 router.post("/register", (req, res) => {
+  const { errors, isValid } = validateRegisterInput(req.body);
+  //check validation
+
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+
   User.findOne({ email: req.body.email }).then(user => {
     if (user) {
-      return res.status(400).json({ email: "Email already exists" });
+      errors.email = "Email already exists";
+      return res.status(400).json(errors);
     } else {
       const newUser = new User({
         name: req.body.name,
@@ -46,6 +61,12 @@ router.post("/register", (req, res) => {
 //@access private
 
 router.post("/login", (req, res) => {
+  const { errors, isValid } = validateLoginInput(req.body);
+
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+
   //created variable email and password
 
   const email = req.body.email;
@@ -55,19 +76,39 @@ router.post("/login", (req, res) => {
   User.findOne({ email }).then(user => {
     //check for user
     if (!user) {
-      return res.status(404).json({ email: "email not found" });
+      errors.email = "User not found";
+      return res.status(404).json(errors);
     }
     bcrypt.compare(password, user.password).then(isMatch => {
       if (isMatch) {
         //user matched
         const payLoad = { id: user.id, name: user.name };
 
-        jwt.sign(payLoad, keys.secretOrKey, { expiresIn: 3600 });
+        jwt.sign(
+          payLoad,
+          keys.secretOrKey,
+          { expiresIn: 3600 },
+          (err, token) => {
+            res.json({
+              success: true,
+              token: "Bearer " + token
+            });
+          }
+        );
       } else {
-        return res.status(400).json({ password: "password incorrect" });
+        errors.password = "Password Incorrect";
+        return res.status(400).json(errors);
       }
     });
   });
 });
+
+router.get(
+  "/current",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    res.json({ id: req.body.id, name: req.body.name, email: req.body.email });
+  }
+);
 
 module.exports = router;
