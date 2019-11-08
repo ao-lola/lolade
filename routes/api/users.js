@@ -12,6 +12,7 @@ const validateRegisterInput = require("../../validator/register");
 const validateLoginInput = require("../../validator/login");
 //Load User Model
 const User = require("./models/Users");
+//const User = require('../api/models/Users')
 
 //@Route get api/users/test route
 //@desc test users route
@@ -35,9 +36,11 @@ router.post("/register", (req, res) => {
       return res.status(400).json(errors);
     } else {
       const newUser = new User({
-        name: req.body.name,
+        firstname: req.body.firstname,
+        lastname: req.body.lastname,
         email: req.body.email,
-        password: req.body.password
+        password: req.body.password,
+        is_admin: req.body.is_admin
       });
 
       bcrypt.genSalt(10, (err, salt) => {
@@ -82,7 +85,7 @@ router.post("/login", (req, res) => {
     bcrypt.compare(password, user.password).then(isMatch => {
       if (isMatch) {
         //user matched
-        const payLoad = { id: user.id, name: user.name };
+        const payLoad = { id: user.id };
 
         jwt.sign(
           payLoad,
@@ -103,11 +106,51 @@ router.post("/login", (req, res) => {
   });
 });
 
+router.put(
+  "/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res, next) => {
+    let id = req.params.id;
+    console.log("id:", id);
+    User.findOne({ _id: id }, (err, user) => {
+      if (err) {
+        console.log("error:", err);
+        return res.status(500).json({
+          error: "Oops an error occurred"
+        });
+      }
+
+      if (!user) {
+        return res.status(400).json({
+          error: "Unable to find user"
+        });
+      } else {
+        Object.assign(user, req.body);
+        user.save((err, savedUser) => {
+          if (err) {
+            console.log("user error:", err);
+            return res.status(500).json({
+              error: "Oops an error occurred"
+            });
+          }
+
+          if (savedUser) {
+            return res.status(200).json({
+              message: "User successfully updated",
+              data: savedUser
+            });
+          }
+        });
+      }
+    });
+  }
+);
+
 router.get(
   "/current",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
-    res.json({ id: req.body.id, name: req.body.name, email: req.body.email });
+    res.json({ id: req.body.id });
   }
 );
 
