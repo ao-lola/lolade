@@ -85,7 +85,7 @@ router.post("/login", (req, res) => {
     bcrypt.compare(password, user.password).then(isMatch => {
       if (isMatch) {
         //user matched
-        const payLoad = { id: user.id };
+        const payLoad = { id: user.id, firstname: user.firstname };
 
         jwt.sign(
           payLoad,
@@ -94,7 +94,7 @@ router.post("/login", (req, res) => {
           (err, token) => {
             res.json({
               success: true,
-              token: "Bearer " + token
+              token: token
             });
           }
         );
@@ -153,5 +153,33 @@ router.get(
     res.json({ id: req.body.id });
   }
 );
+
+router.get("/verify", (req, res) => {
+  let token = req.headers["authorization"];
+  jwt.verify(token, "mykey", (err, decoded) => {
+    if (err) {
+      let message = "";
+      if (err.name) {
+        switch (err.name) {
+          case "TokenExpiredError":
+            message = lang.get("error").token_expired;
+            break;
+          default:
+            message = lang.get("error").token_auth_failed;
+        }
+      }
+      return res.json({
+        status: false,
+        message: "Authorization declined"
+      });
+    } else {
+      let firstname = decoded.firstname;
+      return res.json({
+        status: true,
+        message: "Authorization Successful " + firstname
+      });
+    }
+  });
+});
 
 module.exports = router;
